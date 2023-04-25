@@ -36,17 +36,23 @@ export default async function handler(
     {
       id: "articles",
       title: "文章总数",
-      getData: async () => {},
+      getData: async () => {
+        return 0;
+      },
     },
     {
       id: "articles",
       title: "评论总数",
-      getData: async () => {},
+      getData: async () => {
+        return 0;
+      },
     },
     {
       id: "articles",
       title: "关注者总数",
-      getData: async () => {},
+      getData: async () => {
+        return 0;
+      },
     },
     {
       id: "viewNoteCount",
@@ -59,9 +65,19 @@ export default async function handler(
     {
       id: "articles",
       title: "站点运行时间",
-      getData: async () => {},
+      getData: async () => {
+        return 0;
+      },
     },
-  ];
+  ] as const;
+
+  let showCards: (typeof cards)[number][] = [];
+
+  if (!layout) {
+    showCards = [...cards];
+  } else {
+    console.log(layout);
+  }
 
   // 浏览总数
   const font = await loadFont(req);
