@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import satori from "satori";
 import dayjs from "dayjs";
+import { languageFontMap } from "../../utils/font";
 
-const loadFont = async (req: NextApiRequest) => {
-  return fetch(
-    `${req.headers["x-forwarded-proto"]}://${req.headers.host}/Roboto-Regular.ttf`
-  ).then((res) => res.arrayBuffer());
+const __DEV__ = process.env.NODE_ENV === "development";
+
+const loadFont = async (host: string) => {
+  return fetch(`${host}/Roboto-Regular.ttf`).then((res) => res.arrayBuffer());
 };
 
 const getMeta = async (name: string) => {
@@ -45,6 +46,83 @@ const View: React.FC<{
   return <div style={{ display: "flex", ...style }}>{children}</div>;
 };
 
+function withCache(fn: Function) {
+  const cache = new Map();
+  return async (...args: string[]) => {
+    const key = args.join(":");
+    if (cache.has(key)) return cache.get(key);
+    const result = await fn(...args);
+    cache.set(key, result);
+    return result;
+  };
+}
+
+const loadDynamicAsset = withCache(
+  async (host: string, _code: string, text: string) => {
+    const codes = _code.split("|");
+    const names = codes
+      .map((code) => languageFontMap[code as keyof typeof languageFontMap])
+      .filter(Boolean);
+
+    if (names.length === 0) return [];
+
+    const params = new URLSearchParams();
+    for (const name of names.flat()) {
+      params.append("fonts", name);
+    }
+    params.set("text", text);
+
+    try {
+      const response = await fetch(`${host}/api/font?${params.toString()}`);
+
+      if (response.status === 200) {
+        const data = await response.arrayBuffer();
+        const fonts: any[] = [];
+
+        // Decode the encoded font format.
+        const decodeFontInfoFromArrayBuffer = (buffer: ArrayBuffer) => {
+          let offset = 0;
+          const bufferView = new Uint8Array(buffer);
+
+          while (offset < bufferView.length) {
+            // 1 byte for font name length.
+            const languageCodeLength = bufferView[offset];
+            offset += 1;
+            let languageCode = "";
+            for (let i = 0; i < languageCodeLength; i++) {
+              languageCode += String.fromCharCode(bufferView[offset + i]);
+            }
+            offset += languageCodeLength;
+
+            // 4 bytes for font data length.
+            const fontDataLength = new DataView(buffer).getUint32(
+              offset,
+              false
+            );
+            offset += 4;
+            const fontData = buffer.slice(offset, offset + fontDataLength);
+            offset += fontDataLength;
+
+            fonts.push({
+              name: `satori_${languageCode}_fallback_${text}`,
+              data: fontData,
+              weight: 400,
+              style: "normal",
+              lang: languageCode === "unknown" ? undefined : languageCode,
+            });
+          }
+        };
+
+        decodeFontInfoFromArrayBuffer(data);
+
+        return fonts;
+      }
+    } catch (e) {
+      console.error("Failed to load dynamic font for", text, ". Error:", e);
+    }
+  }
+);
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -67,7 +145,7 @@ export default async function handler(
   const cards = [
     {
       id: "article",
-      title: "Articles",
+      title: "发布的文章",
       value: 0,
       getData: async () => {
         const data = await getArticleCount(name);
@@ -76,7 +154,7 @@ export default async function handler(
     },
     {
       id: "comment",
-      title: "Comments",
+      title: "收到的评论",
       value: 0,
       getData: async () => {
         const { count } = await getCommentsCount(characterId);
@@ -85,7 +163,7 @@ export default async function handler(
     },
     {
       id: "follower",
-      title: "Followers",
+      title: "关注者",
       value: 0,
       getData: async () => {
         const { count } = await getFollowerCount(characterId);
@@ -94,7 +172,7 @@ export default async function handler(
     },
     {
       id: "viewCount",
-      title: "Visits",
+      title: "浏览量",
       value: 0,
       getData: async () => {
         const { viewNoteCount } = await getViewCount(characterId);
@@ -103,7 +181,7 @@ export default async function handler(
     },
     {
       id: "site",
-      title: "Days the site is running",
+      title: "站点运行时间",
       value: "0",
       getData: async () => {
         const day = dayjs(new Date()).diff(dayjs(metaData.createdAt), "day");
@@ -126,10 +204,15 @@ export default async function handler(
   }
 
   for (const item of showCards) {
+    // if (__DEV__) {
+    // item.value = (Math.random() * 10000) | 0;
+    // } else {
     item.value = await item.getData();
+    // }
   }
 
-  const font = await loadFont(req);
+  const host = `${req.headers["x-forwarded-proto"]}://${req.headers.host}`;
+  const font = await loadFont(host);
 
   const svg = await satori(
     <View
@@ -190,6 +273,9 @@ export default async function handler(
       width: 700,
       height: 200,
       embedFont: true,
+      loadAdditionalAsset(languageCode: string, segment: string) {
+        return loadDynamicAsset(host, languageCode, segment);
+      },
       fonts: [
         {
           name: "Roboto",
