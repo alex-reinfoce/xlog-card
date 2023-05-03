@@ -3,8 +3,6 @@ import satori from "satori";
 import dayjs from "dayjs";
 import { languageFontMap } from "../../utils/font";
 
-const __DEV__ = process.env.NODE_ENV === "development";
-
 const loadFont = async (host: string) => {
   return fetch(`${host}/Roboto-Regular.ttf`).then((res) => res.arrayBuffer());
 };
@@ -21,9 +19,9 @@ const getViewCount = async (characterId: string) => {
   ).then((res) => res.json());
 };
 
-const getArticleCount = async (name: string) => {
+const getArticleCount = async (characterId: string) => {
   return fetch(
-    `https://alex-programer.xlog.app/api/pages?site=${name}&type=post&visibility=published&useStat=true`
+    `https://indexer.crossbell.io/v1/notes?characterId=${characterId}&sources=xlog&tags=post&limit=0`
   ).then((res) => res.json());
 };
 
@@ -148,8 +146,8 @@ export default async function handler(
       title: "发布的文章",
       value: 0,
       getData: async () => {
-        const data = await getArticleCount(name);
-        return data.total;
+        const data = await getArticleCount(characterId);
+        return data.count;
       },
     },
     {
