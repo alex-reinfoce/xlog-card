@@ -48,10 +48,17 @@ const cardBody: React.CSSProperties = {
   padding: "20px 0",
 };
 
-const layoutConfig = ["article", "comment", "follower", "viewCount", "site"];
+const layoutConfig = [
+  "article",
+  "comment",
+  "reward",
+  "follower",
+  "viewCount",
+  "site",
+];
 
 const Card = () => {
-  const [name, setName] = useState("diygod");
+  const [name, setName] = useState("Alex-Programer");
   const [host, setHOST] = useState("");
   const [layout, setLayout] = useState([...layoutConfig]);
 
@@ -121,6 +128,7 @@ const Card = () => {
         >
           <Checkbox value="article">article</Checkbox>
           <Checkbox value="comment">comment</Checkbox>
+          <Checkbox value="reward">reward</Checkbox>
           <Checkbox value="follower">follower</Checkbox>
           <Checkbox value="viewCount">viewCount</Checkbox>
           <Checkbox value="site">site</Checkbox>

@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import satori from "satori";
 import dayjs from "dayjs";
+import BigNumber from "bignumber.js";
+
 import { languageFontMap } from "../../utils/font";
 
 const loadFont = async (host: string) => {
@@ -35,6 +37,23 @@ const getCommentsCount = async (characterId: string) => {
   return fetch(
     `https://indexer.crossbell.io/v1/notes?limit=0&toCharacterId=${characterId}`
   ).then((res) => res.json());
+};
+
+const getReward = async (characterId: string) => {
+  const { list } = await fetch(
+    `https://indexer.crossbell.io/v1/tips?toCharacterId=${characterId}&tokenAddress=0xAfB95CC0BD320648B3E8Df6223d9CDD05EbeDC64&limit=1000`
+  ).then((res) => res.json());
+
+  const total = (list as { amount: string }[]).reduce((pre, next) => {
+    return (
+      pre +
+      new BigNumber(next.amount)
+        .div(BigInt("1000000000000000000").toString())
+        .toNumber()
+    );
+  }, 0);
+
+  return total;
 };
 
 const View: React.FC<{
@@ -138,14 +157,14 @@ export default async function handler(
     return;
   }
 
-  const characterId = metaData.characterId;
+  const { characterId } = metaData;
 
   const cards = [
     {
       id: "article",
       title: "发布的文章",
       value: 0,
-      getData: async () => {
+      getData: async function () {
         const data = await getArticleCount(characterId);
         return data.count;
       },
@@ -154,16 +173,24 @@ export default async function handler(
       id: "comment",
       title: "收到的评论",
       value: 0,
-      getData: async () => {
+      getData: async function () {
         const { count } = await getCommentsCount(characterId);
         return count;
+      },
+    },
+    {
+      id: "reward",
+      title: "收到的打赏",
+      value: 0,
+      getData: async function () {
+        return getReward(characterId);
       },
     },
     {
       id: "follower",
       title: "关注者",
       value: 0,
-      getData: async () => {
+      getData: async function () {
         const { count } = await getFollowerCount(characterId);
         return count;
       },
@@ -172,7 +199,7 @@ export default async function handler(
       id: "viewCount",
       title: "浏览量",
       value: 0,
-      getData: async () => {
+      getData: async function () {
         const { viewNoteCount } = await getViewCount(characterId);
         return viewNoteCount;
       },
@@ -181,7 +208,7 @@ export default async function handler(
       id: "site",
       title: "站点运行时间",
       value: "0",
-      getData: async () => {
+      getData: async function () {
         const day = dayjs(new Date()).diff(dayjs(metaData.createdAt), "day");
         return day;
       },
@@ -202,11 +229,7 @@ export default async function handler(
   }
 
   for (const item of showCards) {
-    // if (__DEV__) {
-    // item.value = (Math.random() * 10000) | 0;
-    // } else {
     item.value = await item.getData();
-    // }
   }
 
   const host = `${req.headers["x-forwarded-proto"]}://${req.headers.host}`;
