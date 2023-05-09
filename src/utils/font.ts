@@ -58,17 +58,18 @@ export class FontDetector {
 
     const API = `https://fonts.googleapis.com/css2?${params}`;
 
-    const fontFace = await (
-      await fetch(API, {
+    try {
+      const fontFace = await fetch(API, {
         headers: {
           // Make sure it returns TTF.
           "User-Agent":
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
         },
-      })
-    ).text();
-
-    this.addDetectors(fontFace);
+      }).then((res) => res.text());
+      this.addDetectors(fontFace);
+    } catch (error) {
+      console.log("字体加载失败", { error, api: API });
+    }
   }
 
   private addDetectors(input: string) {
