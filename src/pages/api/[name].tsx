@@ -140,14 +140,42 @@ const loadDynamicAsset = withCache(
   }
 );
 
+const titleMap = {
+  article: {
+    zh: "发布的文章",
+    en: "Creation",
+  },
+  comment: {
+    zh: "收到的评论",
+    en: "Comments",
+  },
+  reward: {
+    zh: "收到的打赏",
+    en: "Tips",
+  },
+  follower: {
+    zh: "关注者",
+    en: "Followers",
+  },
+  viewCount: {
+    zh: "浏览量",
+    en: "Viewed",
+  },
+  site: {
+    zh: "站点运行时间",
+    en: "Become xLogger for",
+  },
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const { name, theme, layout } = req.query as {
+  const { name, theme, layout, lang } = req.query as {
     name: string;
     theme: string;
     layout: string;
+    lang?: string;
   };
 
   const metaData = await getMeta(name);
@@ -162,7 +190,6 @@ export default async function handler(
   const cards = [
     {
       id: "article",
-      title: "发布的文章",
       value: 0,
       getData: async function () {
         const data = await getArticleCount(characterId);
@@ -171,7 +198,6 @@ export default async function handler(
     },
     {
       id: "comment",
-      title: "收到的评论",
       value: 0,
       getData: async function () {
         const { count } = await getCommentsCount(characterId);
@@ -180,7 +206,6 @@ export default async function handler(
     },
     {
       id: "reward",
-      title: "收到的打赏",
       value: 0,
       getData: async function () {
         return getReward(characterId);
@@ -188,7 +213,6 @@ export default async function handler(
     },
     {
       id: "follower",
-      title: "关注者",
       value: 0,
       getData: async function () {
         const { count } = await getFollowerCount(characterId);
@@ -197,7 +221,6 @@ export default async function handler(
     },
     {
       id: "viewCount",
-      title: "浏览量",
       value: 0,
       getData: async function () {
         const { viewNoteCount } = await getViewCount(characterId);
@@ -206,14 +229,19 @@ export default async function handler(
     },
     {
       id: "site",
-      title: "站点运行时间",
       value: "0",
       getData: async function () {
         const day = dayjs(new Date()).diff(dayjs(metaData.createdAt), "day");
         return day;
       },
     },
-  ];
+  ].map((item) => {
+    const title = titleMap[item.id as keyof typeof titleMap][lang === 'en' ? 'en' : 'zh'];
+    return {
+      ...item,
+      title,
+    };
+  });
 
   let showCards: (typeof cards)[number][] = [];
 

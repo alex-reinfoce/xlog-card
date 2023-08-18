@@ -80,7 +80,7 @@ const Card = () => {
 
   const dark = useMemo(() => {
     if (!host) return "";
-    const url = new URL(`/api/${name}`, location.origin);
+    const url = new URL(`/api/${name}?lang=en`, location.origin);
     url.searchParams.set("theme", "dark");
     cardLayout && url.searchParams.set("layout", cardLayout);
     return url.toString();
